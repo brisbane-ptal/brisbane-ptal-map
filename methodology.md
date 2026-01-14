@@ -117,25 +117,27 @@ Multiple routes serving the same location provide redundancy but with diminishin
 
 Inbound and outbound services are counted separately, as they serve different trip purposes. A location with 12 inbound and 12 outbound services per hour has genuinely better accessibility than one with 12 services in a single direction (no return journey option).
 
-**5. Mode-specific catchments with distance decay**
+**5. Mode-specific catchments**
 
 Walking catchment distances reflect infrastructure permanence and observed passenger behaviour:
 
-| Mode | Catchment | Distance decay |
-|------|-----------|----------------|
-| Heavy rail | 0-800m | Full credit 0-400m, declining to 30% at 800m |
-| Busway stations | 0-800m | Full credit 0-400m, declining to 30% at 800m |
-| CityCat terminals | 0-800m | Full credit 0-400m, declining to 30% at 800m |
-| Bus stops | 0-400m | Full credit throughout |
-| KittyCat stops | 0-400m | Full credit throughout |
+| Mode | Catchment |
+|------|-----------|
+| Heavy rail | 800m |
+| Busway stations | 800m |
+| CityCat terminals | 800m |
+| Bus stops | 400m |
+| KittyCat stops | 400m |
 
 **Rationale for 800m rail/busway catchments:**
-- International PTAL methodologies consistently use larger catchments for rail (London: 960m, Melbourne: 800m, Auckland: 800m)
-- Research demonstrates passengers walk approximately twice as far for high-quality service
+- International PTAL methodologies use 800-960m for rail (London: 960m, Melbourne: 800m, Auckland: 800m)
 - Brisbane development guidelines recognise 800m station catchments for Transit-Oriented Development
-- Rail and busway represent permanent infrastructure with substantial passenger facilities
-- Distance decay (declining to 30% at 800m) ensures proximity still matters—remote locations don't receive full credit
-
+- Research demonstrates passengers walk approximately twice as far for high-quality service
+- Rail and busway represent permanent infrastructure worth walking to
+- This methodology uses 800m (not 960m) to account for Brisbane’s subtropical climate
+- Network distance calculation (not straight-line) adds further conservatism
+- Hard cutoff at 801m means locations just beyond the catchment receive no credit
+   
 **Rationale for CityCat 800m catchment:**
 - Ferry terminals are permanent landmarks with substantial infrastructure investment
 - Cross-river accessibility is structurally valuable in a river-divided city
@@ -160,25 +162,48 @@ Thresholds calibrated to Brisbane conditions based on sample locations with know
 
 For each 100m × 100m grid cell:
 
-1. Identify all stops within catchment distance (mode-specific, network distance)
-2. For each stop, extract 7-9am weekday services from GTFS data
+Here’s the cleaner version without distance decay:
+
+-----
+
+## Calculation process
+
+For each 100m × 100m grid cell:
+
+1. Identify all stops within mode-specific catchment distance using pedestrian network routing:
+
+- Rail/busway/CityCat stops: within 800m
+- Bus/KittyCat stops: within 400m
+
+2. For each stop within catchment, extract 7-9am weekday services from GTFS data
 3. Calculate services per hour per route-direction
 4. Apply capacity weighting based on vehicle type
 5. Apply reliability adjustment based on mode
-6. Apply distance decay based on walking distance
-7. Calculate effective frequency for each route-direction serving the cell
-8. Sort routes by effective frequency (descending)
-9. Apply route dominance decay to calculate total effective capacity
-10. Assign PTAL band based on threshold
+6. Calculate effective frequency for each route-direction serving the cell
+7. Sort routes by effective frequency (descending)
+8. Apply route dominance decay to calculate total effective capacity
+9. Assign PTAL band based on threshold
 
 **Formula:**
 
 ```
-Total Effective Capacity = Σ(Services/hr × Capacity Weight × Reliability Factor × Distance Weight × Decay Factor)
+Total Effective Capacity = Σ(Services/hr × Capacity Weight × Reliability Factor × Decay Factor)
 ```
 
 Where decay factor depends on route rank (1st route: 1.0, 2nd: 0.5, 3rd: 0.3, etc.)
 
+**Example calculation:**
+
+For a cell served by Dutton Park station and Logan Road buses:
+
+```
+Route 1 - Train inbound: 8 services/hr × 9.0 capacity × 0.95 reliability × 1.00 decay = 68.4 units
+Route 2 - Train outbound: 8 services/hr × 9.0 capacity × 0.95 reliability × 0.50 decay = 34.2 units
+Route 3 - Bus 160 inbound: 4 services/hr × 1.0 capacity × 0.85 reliability × 0.30 decay = 1.0 units
+Route 4 - Bus 160 outbound: 4 services/hr × 1.0 capacity × 0.85 reliability × 0.20 decay = 0.7 units
+
+Total Effective Capacity = 104.3 units → PTAL 4
+```
 ## Data sources
 
 - **GTFS schedule data:** TransLink South East Queensland, current timetables
