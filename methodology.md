@@ -257,18 +257,20 @@ Potential refinements under consideration:
 
 This analysis was developed by a Brisbane-based urban planning analyst as an independent research project.
 
+## Feedback
+
 The methodology is offered for public use and critique. Corrections, suggestions, and data quality feedback are welcomed.
 
-**Feedback:** 
+## Acknowledgements
 
-**Acknowledgements:**
 - Transport for London for original PTAL methodology development
 - TransLink Queensland for open GTFS data
 - OpenStreetMap contributors for pedestrian network data
 
 ---
 
-**Version history:**
+## Version history
 - v0.1 (January 2026): Initial methodology documentation
 
-**Licence:** CC-BY-4.0 
+## Licence 
+CC-BY-4.0 
