@@ -1,11 +1,11 @@
 /* =========================================================
-   Brisbane PTAL Explorer — map.js (working)
+   Brisbane PTAL Explorer — map.js (updated)
    ========================================================= */
 
 /* ==============================
    App metadata
    ============================== */
-const APP_VERSION = "v0.3 – Jan 2026";
+const APP_VERSION = "v0.4 – Jan 2026";
 const PTAL_THRESHOLDS_TEXT = "PTAL thresholds: 1 <10 · 2 ≥10 · 3 ≥50 · 4 ≥120";
 
 /* ==============================
@@ -28,6 +28,7 @@ const NOMINATIM_EMAIL = ""; // e.g. "you@example.com"
 let ptalLayer = null;
 let ptalData = null;
 let showMismatchOnly = false;
+let showInverseMismatchOnly = false;
 
 let searchMarker = null;
 
@@ -72,7 +73,30 @@ function getRecommendedHeight(ptal) {
 function getModeIcon(mode) {
   if (mode === "rail" || mode === "train") return "🚆";
   if (mode === "ferry") return "⛴️";
+  if (mode === "busway") return "🚌";
   return "🚌";
+}
+
+function getModeLabel(mode) {
+  if (mode === "rail" || mode === "train") return "Train";
+  if (mode === "ferry") return "Ferry";
+  if (mode === "busway") return "Busway";
+  return "Bus";
+}
+
+/* ==============================
+   Mismatch Detection
+   ============================== */
+function hasMismatch(props) {
+  const ptal = Number(props.ptal);
+  const maxStoreys = Number(props.max_storeys);
+  return Number.isFinite(ptal) && Number.isFinite(maxStoreys) && ptal === 4 && maxStoreys < 8;
+}
+
+function hasInverseMismatch(props) {
+  const ptal = Number(props.ptal);
+  const maxStoreys = Number(props.max_storeys);
+  return Number.isFinite(ptal) && Number.isFinite(maxStoreys) && ptal <= 1 && maxStoreys >= 4;
 }
 
 /* ==============================
@@ -91,13 +115,39 @@ function style(feature) {
   const ptal = Number(props.ptal);
 
   if (!Number.isFinite(ptal)) return { fillOpacity: 0, opacity: 0, stroke: false };
-  if (showMismatchOnly && !props.mismatch) return { fillOpacity: 0, opacity: 0, stroke: false };
+  
+  const mismatch = hasMismatch(props);
+  const inverseMismatch = hasInverseMismatch(props);
+
+  // Filter logic
+  if (showMismatchOnly && showInverseMismatchOnly) {
+    // Show both types of mismatch
+    if (!mismatch && !inverseMismatch) {
+      return { fillOpacity: 0, opacity: 0, stroke: false };
+    }
+  } else if (showMismatchOnly && !mismatch) {
+    return { fillOpacity: 0, opacity: 0, stroke: false };
+  } else if (showInverseMismatchOnly && !inverseMismatch) {
+    return { fillOpacity: 0, opacity: 0, stroke: false };
+  }
+
+  // Border color based on mismatch type
+  let borderColor = "white";
+  let borderWeight = 1;
+  
+  if (mismatch) {
+    borderColor = "#ff0000";
+    borderWeight = 2;
+  } else if (inverseMismatch) {
+    borderColor = "#9932CC";
+    borderWeight = 2;
+  }
 
   return {
     fillColor: getPTALColor(ptal),
-    weight: 1,
-    color: "white",
-    opacity: 0.3,
+    weight: borderWeight,
+    color: borderColor,
+    opacity: 0.7,
     fillOpacity: 0.6,
   };
 }
@@ -105,7 +155,12 @@ function style(feature) {
 function highlightFeature(e) {
   const layer = e.target;
   const props = layer.feature?.properties || {};
-  if (showMismatchOnly && !props.mismatch) return;
+  
+  const mismatch = hasMismatch(props);
+  const inverseMismatch = hasInverseMismatch(props);
+  
+  if (showMismatchOnly && !mismatch) return;
+  if (showInverseMismatchOnly && !inverseMismatch) return;
 
   layer.setStyle({ weight: 3, opacity: 1, fillOpacity: 0.8 });
   if (!L.Browser.ie && !L.Browser.opera) {
@@ -178,7 +233,19 @@ function showInfo(e) {
         : "Unknown";
   setHTML("max-height", heightDisplay);
 
-  showEl("mismatch-warning", !!props.mismatch);
+  // Show mismatch warnings
+  const mismatch = hasMismatch(props);
+  const inverseMismatch = hasInverseMismatch(props);
+  
+  showEl("mismatch-warning", mismatch);
+  showEl("inverse-mismatch-warning", inverseMismatch);
+  
+  if (inverseMismatch) {
+    const inverseWarningEl = $("inverse-mismatch-warning");
+    if (inverseWarningEl) {
+      inverseWarningEl.innerHTML = `⚠️ <strong>Overdevelopment Risk:</strong> This location allows ${maxStoreys}-storey development but has poor transit accessibility (PTAL ${ptal}).`;
+    }
+  }
 
   if (props.total_capacity !== undefined && props.total_capacity !== null && props.total_capacity !== "") {
     showEl("capacity-info", true);
@@ -187,7 +254,7 @@ function showInfo(e) {
     showEl("capacity-info", false);
   }
 
-  // Stops list
+  // Stops list with stop codes
   const stopsList = $("nearby-stops");
   if (stopsList) {
     stopsList.innerHTML = "";
@@ -204,13 +271,15 @@ function showInfo(e) {
           const li = document.createElement("li");
           const mode = stop.mode || "bus";
           const name = stop.stop_name || "Stop";
+          const stopCode = stop.stop_id ? ` (${stop.stop_id})` : '';
           const dist = stop.distance_m ?? "?";
           const walk = stop.walk_time_min ?? "?";
+          const modeLabel = getModeLabel(mode);
 
           li.innerHTML = `
-            ${getModeIcon(mode)} <strong>${name}</strong><br>
+            ${getModeIcon(mode)} <strong>${name}</strong>${stopCode}<br>
             <span style="color:#666;font-size:0.9em;">
-              ${mode} • ${dist} m • ${walk} min walk
+              ${modeLabel} • ${dist} m • ${walk} min walk
             </span>`;
           li.style.marginBottom = "10px";
           stopsList.appendChild(li);
@@ -306,14 +375,24 @@ if (burger && legend) {
 }
 
 /* ==============================
-   Mismatch toggle
+   Mismatch toggles
    ============================== */
 const mismatchToggle = $("mismatch-toggle");
+const inverseMismatchToggle = $("inverse-mismatch-toggle");
+
+function applyFilters() {
+  showMismatchOnly = mismatchToggle ? mismatchToggle.checked : false;
+  showInverseMismatchOnly = inverseMismatchToggle ? inverseMismatchToggle.checked : false;
+  
+  if (ptalLayer) ptalLayer.setStyle(style);
+}
+
 if (mismatchToggle) {
-  mismatchToggle.addEventListener("change", (e) => {
-    showMismatchOnly = !!e.target.checked;
-    if (ptalLayer) ptalLayer.setStyle(style);
-  });
+  mismatchToggle.addEventListener("change", applyFilters);
+}
+
+if (inverseMismatchToggle) {
+  inverseMismatchToggle.addEventListener("change", applyFilters);
 }
 
 /* ==============================
