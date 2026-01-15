@@ -27,14 +27,14 @@ function onEachFeature(feature, layer) {
 async function loadPTAL() {
     let data = null;
 
-    // 1️ Try gzipped first
+    // Try gzipped first
     try {
         const resGz = await fetch(PTAL_GZ_URL);
         if (resGz.ok) {
             const buffer = await resGz.arrayBuffer();
             const decompressed = pako.ungzip(new Uint8Array(buffer), { to: 'string' });
             data = JSON.parse(decompressed);
-            console.log("PTAL loaded from gz:", data.features.length);
+            console.log("PTAL features (gz):", data.features.length);
         } else {
             console.warn("PTAL gz fetch failed:", resGz.status);
         }
@@ -42,13 +42,13 @@ async function loadPTAL() {
         console.warn("Failed to load gz:", gzErr);
     }
 
-    // 2️ Fallback to plain GeoJSON if gz failed
+    // Fallback to plain GeoJSON
     if (!data) {
         try {
             const resJson = await fetch(PTAL_JSON_URL);
             if (resJson.ok) {
                 data = await resJson.json();
-                console.log("PTAL loaded from plain JSON:", data.features.length);
+                console.log("PTAL features (json):", data.features.length);
             } else {
                 console.error("PTAL JSON fetch failed:", resJson.status);
             }
@@ -57,7 +57,7 @@ async function loadPTAL() {
         }
     }
 
-    // 3️ Add layer if data exists
+    // Add layer if data exists
     if (data) {
         addPTALLayer(data);
     }
