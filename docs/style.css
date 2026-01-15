@@ -56,7 +56,83 @@ header h1 {
 #search-btn:hover {
     background: #158241;
 }
+/* ========================
+   Mobile slide-up info panel
+   ======================== */
+@media (max-width: 768px) {
+    #info-panel {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        max-height: 50%;
+        background: #fff;
+        border-top-left-radius: 12px;
+        border-top-right-radius: 12px;
+        box-shadow: 0 -3px 10px rgba(0,0,0,0.3);
+        overflow-y: auto;
+        transform: translateY(100%);
+        transition: transform 0.3s ease-in-out;
+        z-index: 1000;
+    }
 
+    #info-panel.show {
+        transform: translateY(0);
+    }
+
+    #info-panel button#close-panel {
+        position: absolute;
+        top: 8px;
+        right: 12px;
+        font-size: 1.5rem;
+        background: none;
+        border: none;
+        cursor: pointer;
+    }
+
+    /* Collapse legend by default on mobile */
+    #legend {
+        position: fixed;
+        top: 80px;
+        right: 10px;
+        width: 50px;
+        max-height: 70%;
+        background: #fff;
+        border-radius: 8px;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+        overflow: hidden;
+        transition: width 0.3s ease;
+        z-index: 900;
+    }
+
+    #legend.expanded {
+        width: 220px;
+        padding: 10px;
+    }
+
+    #legend-toggle {
+        display: block;
+        text-align: center;
+        cursor: pointer;
+        font-weight: bold;
+        padding: 5px 0;
+        background: #eee;
+        border-bottom: 1px solid #ccc;
+    }
+
+    #legend .legend-content {
+        display: none;
+    }
+
+    #legend.expanded .legend-content {
+        display: block;
+    }
+}
+
+/* Optional: Desktop keeps original layout */
+@media (min-width: 769px) {
+    #legend-toggle { display: none; }
+}
 #map {
     height: calc(100vh - 140px);
     width: 100%;
