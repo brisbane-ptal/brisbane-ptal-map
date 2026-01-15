@@ -1,11 +1,11 @@
 /* =========================================================
-   Brisbane PTAL Explorer — map.js (updated)
+   Brisbane PTAL Explorer — map.js (updated v0.5)
    ========================================================= */
 
 /* ==============================
    App metadata
    ============================== */
-const APP_VERSION = "v0.4 – Jan 2026";
+const APP_VERSION = "v0.5 – Jan 2026";
 const PTAL_THRESHOLDS_TEXT = "PTAL thresholds: 1 <10 · 2 ≥10 · 3 ≥50 · 4 ≥120";
 
 /* ==============================
@@ -27,8 +27,7 @@ const NOMINATIM_EMAIL = ""; // e.g. "you@example.com"
    ============================== */
 let ptalLayer = null;
 let ptalData = null;
-let showMismatchOnly = false;
-let showInverseMismatchOnly = false;
+let showMismatchesOnly = false;
 
 let searchMarker = null;
 
@@ -87,15 +86,27 @@ function getModeLabel(mode) {
 /* ==============================
    Mismatch Detection
    ============================== */
-function hasMismatch(props) {
+function hasPlanningMismatch(props) {
   const ptal = Number(props.ptal);
   const maxStoreys = Number(props.max_storeys);
-  return Number.isFinite(ptal) && Number.isFinite(maxStoreys) && ptal === 4 && maxStoreys < 8;
+  const zone = props.Zone_code;
+  
+  // Don't flag mismatch if zone is unknown or mixed
+  if (!zone || zone === "Unknown" || zone === "Mixed") return false;
+  
+  // PTAL 4 but restricted to 3 storeys or less
+  return Number.isFinite(ptal) && Number.isFinite(maxStoreys) && ptal === 4 && maxStoreys <= 3;
 }
 
-function hasInverseMismatch(props) {
+function hasTransitGap(props) {
   const ptal = Number(props.ptal);
   const maxStoreys = Number(props.max_storeys);
+  const zone = props.Zone_code;
+  
+  // Don't flag if zone is unknown or mixed
+  if (!zone || zone === "Unknown" || zone === "Mixed") return false;
+  
+  // Poor transit (PTAL 1) but allows 4+ storeys
   return Number.isFinite(ptal) && Number.isFinite(maxStoreys) && ptal <= 1 && maxStoreys >= 4;
 }
 
@@ -116,18 +127,11 @@ function style(feature) {
 
   if (!Number.isFinite(ptal)) return { fillOpacity: 0, opacity: 0, stroke: false };
   
-  const mismatch = hasMismatch(props);
-  const inverseMismatch = hasInverseMismatch(props);
+  const planningMismatch = hasPlanningMismatch(props);
+  const transitGap = hasTransitGap(props);
 
-  // Filter logic
-  if (showMismatchOnly && showInverseMismatchOnly) {
-    // Show both types of mismatch
-    if (!mismatch && !inverseMismatch) {
-      return { fillOpacity: 0, opacity: 0, stroke: false };
-    }
-  } else if (showMismatchOnly && !mismatch) {
-    return { fillOpacity: 0, opacity: 0, stroke: false };
-  } else if (showInverseMismatchOnly && !inverseMismatch) {
+  // Filter logic - show if either mismatch type when filter active
+  if (showMismatchesOnly && !planningMismatch && !transitGap) {
     return { fillOpacity: 0, opacity: 0, stroke: false };
   }
 
@@ -135,10 +139,10 @@ function style(feature) {
   let borderColor = "white";
   let borderWeight = 1;
   
-  if (mismatch) {
+  if (planningMismatch) {
     borderColor = "#ff0000";
     borderWeight = 2;
-  } else if (inverseMismatch) {
+  } else if (transitGap) {
     borderColor = "#9932CC";
     borderWeight = 2;
   }
@@ -156,11 +160,10 @@ function highlightFeature(e) {
   const layer = e.target;
   const props = layer.feature?.properties || {};
   
-  const mismatch = hasMismatch(props);
-  const inverseMismatch = hasInverseMismatch(props);
+  const planningMismatch = hasPlanningMismatch(props);
+  const transitGap = hasTransitGap(props);
   
-  if (showMismatchOnly && !mismatch) return;
-  if (showInverseMismatchOnly && !inverseMismatch) return;
+  if (showMismatchesOnly && !planningMismatch && !transitGap) return;
 
   layer.setStyle({ weight: 3, opacity: 1, fillOpacity: 0.8 });
   if (!L.Browser.ie && !L.Browser.opera) {
@@ -234,18 +237,11 @@ function showInfo(e) {
   setHTML("max-height", heightDisplay);
 
   // Show mismatch warnings
-  const mismatch = hasMismatch(props);
-  const inverseMismatch = hasInverseMismatch(props);
+  const planningMismatch = hasPlanningMismatch(props);
+  const transitGap = hasTransitGap(props);
   
-  showEl("mismatch-warning", mismatch);
-  showEl("inverse-mismatch-warning", inverseMismatch);
-  
-  if (inverseMismatch) {
-    const inverseWarningEl = $("inverse-mismatch-warning");
-    if (inverseWarningEl) {
-      inverseWarningEl.innerHTML = `⚠️ <strong>Overdevelopment Risk:</strong> This location allows ${maxStoreys}-storey development but has poor transit accessibility (PTAL ${ptal}).`;
-    }
-  }
+  showEl("planning-mismatch-warning", planningMismatch);
+  showEl("transit-gap-warning", transitGap);
 
   if (props.total_capacity !== undefined && props.total_capacity !== null && props.total_capacity !== "") {
     showEl("capacity-info", true);
@@ -375,24 +371,17 @@ if (burger && legend) {
 }
 
 /* ==============================
-   Mismatch toggles
+   Mismatch toggle (single checkbox)
    ============================== */
 const mismatchToggle = $("mismatch-toggle");
-const inverseMismatchToggle = $("inverse-mismatch-toggle");
 
-function applyFilters() {
-  showMismatchOnly = mismatchToggle ? mismatchToggle.checked : false;
-  showInverseMismatchOnly = inverseMismatchToggle ? inverseMismatchToggle.checked : false;
-  
+function applyFilter() {
+  showMismatchesOnly = mismatchToggle ? mismatchToggle.checked : false;
   if (ptalLayer) ptalLayer.setStyle(style);
 }
 
 if (mismatchToggle) {
-  mismatchToggle.addEventListener("change", applyFilters);
-}
-
-if (inverseMismatchToggle) {
-  inverseMismatchToggle.addEventListener("change", applyFilters);
+  mismatchToggle.addEventListener("change", applyFilter);
 }
 
 /* ==============================
