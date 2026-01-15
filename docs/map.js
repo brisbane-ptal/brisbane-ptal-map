@@ -8,7 +8,7 @@ const PTAL_THRESHOLDS_TEXT = "PTAL thresholds: 1 <10 · 2 ≥10 · 3 ≥50 · 4 
 // PTAL URLs
 // ==============================
 const PTAL_GZ_URL = "https://raw.githubusercontent.com/brisbane-ptal/brisbane-ptal-map/main/docs/brisbane_ptal_final.geojson.gz";
-const PTAL_JSON_URL = "https://raw.githubusercontent.com/brisbane-ptal/brisbane_ptal-map/main/docs/brisbane_ptal_final.geojson";
+const PTAL_JSON_URL = "https://raw.githubusercontent.com/brisbane-ptal/brisbane-ptal-map/main/docs/brisbane_ptal_final.geojson";
 
 let ptalLayer = null;
 let showMismatchOnly = false;
@@ -24,7 +24,7 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 }).addTo(map);
 
 // ==============================
-// PTAL Styling & Feature Helpers
+// PTAL Helpers
 // ==============================
 function getPTALColor(ptal) {
     switch (ptal) {
@@ -37,7 +37,7 @@ function getPTALColor(ptal) {
 }
 
 function getPTALLabel(ptal) {
-    const labels = { 4:'Excellent', 3:'Good', 2:'Moderate', 1:'Poor' };
+    const labels = {4:'Excellent', 3:'Good', 2:'Moderate', 1:'Poor'};
     return labels[ptal] || 'Unknown';
 }
 
@@ -63,10 +63,8 @@ function getModeIcon(mode) {
 // ==============================
 function style(feature) {
     const ptal = Number(feature.properties?.ptal);
-    if (!Number.isFinite(ptal)) return { fillOpacity:0, opacity:0, stroke:false };
-
-    if (showMismatchOnly && !feature.properties?.mismatch) return { fillOpacity:0, opacity:0, stroke:false };
-
+    if (!Number.isFinite(ptal)) return {fillOpacity:0, opacity:0, stroke:false};
+    if (showMismatchOnly && !feature.properties?.mismatch) return {fillOpacity:0, opacity:0, stroke:false};
     return {
         fillColor: getPTALColor(ptal),
         weight: 1,
@@ -80,7 +78,7 @@ function style(feature) {
 function highlightFeature(e) {
     const layer = e.target;
     if (showMismatchOnly && !layer.feature.properties?.mismatch) return;
-    layer.setStyle({ weight:3, opacity:1, fillOpacity:0.8 });
+    layer.setStyle({weight:3, opacity:1, fillOpacity:0.8});
     if (!L.Browser.ie && !L.Browser.opera && !L.Browser.edge) layer.bringToFront();
 }
 
@@ -89,89 +87,92 @@ function resetHighlight(e) {
 }
 
 function onEachFeature(feature, layer) {
-    layer.on({ mouseover: highlightFeature, mouseout: resetHighlight, click: showInfo });
+    layer.on({mouseover: highlightFeature, mouseout: resetHighlight, click: showInfo});
     const ptal = Number(feature.properties?.ptal);
     if (Number.isFinite(ptal)) {
-        layer.bindTooltip(`PTAL ${ptal} (${getPTALLabel(ptal)})<br>Click for details`, { sticky:true, opacity:0.9 });
+        layer.bindTooltip(`PTAL ${ptal} (${getPTALLabel(ptal)})<br>Click for details`, {sticky:true, opacity:0.9});
     }
 }
+
+// ==============================
+// Info Panel Handling
+// ==============================
+const infoPanel = document.getElementById('info-panel');
+const closeBtn = document.getElementById('close-panel');
 
 function showInfo(e) {
     const props = e.target.feature.properties || {};
     const ptal = Number(props.ptal);
     if (!Number.isFinite(ptal)) return;
 
-    setText('ptal-score', ptal);
-    setText('category-label', getPTALLabel(ptal));
-    setText('zone-code', props.Zone_code || 'Unknown');
-    setText('recommended-height', getRecommendedHeight(ptal));
+    // Populate panel content
+    document.getElementById('ptal-score').textContent = ptal;
+    document.getElementById('category-label').textContent = getPTALLabel(ptal);
+    document.getElementById('zone-code').textContent = props.Zone_code || 'Unknown';
+    document.getElementById('recommended-height').textContent = getRecommendedHeight(ptal);
 
     const heightDisplay = props.max_storeys >= 90
-        ? 'Unlimited*<br><small style="color:#666;">*Airport height limits apply</small>'
+        ? 'Unlimited* (Airport height limits apply)'
         : `${props.max_storeys} storeys`;
-    setHTML('max-height', heightDisplay);
+    document.getElementById('max-height').innerHTML = heightDisplay;
 
-    toggleDisplay('mismatch-warning', !!props.mismatch);
+    document.getElementById('mismatch-warning').style.display = props.mismatch ? 'block':'none';
 
     if (props.total_capacity) {
-        toggleDisplay('capacity-info', true);
-        setText('total-capacity', `${props.total_capacity} effective units/hr`);
+        document.getElementById('capacity-info').style.display = 'block';
+        document.getElementById('total-capacity').textContent = `${props.total_capacity} effective units/hr`;
     } else {
-        toggleDisplay('capacity-info', false);
+        document.getElementById('capacity-info').style.display = 'none';
     }
 
+    // Stops
     const stopsList = document.getElementById('nearby-stops');
-    if (stopsList) {
-        stopsList.innerHTML = '';
-        try {
-            const stops = typeof props.nearby_stops === 'string' ? JSON.parse(props.nearby_stops) : (props.nearby_stops || []);
-            if (stops.length === 0) stopsList.innerHTML = '<li style="color:#999;">No stops within catchment</li>';
-            else stops.forEach(stop => {
-                const li = document.createElement('li');
-                li.innerHTML = `
-                    ${getModeIcon(stop.mode)} <strong>${stop.stop_name}</strong><br>
-                    <span style="color:#666;font-size:0.9em;">
-                        ${stop.mode} • ${stop.distance_m} m • ${stop.walk_time_min} min walk
-                    </span>`;
-                li.style.marginBottom = '10px';
-                stopsList.appendChild(li);
-            });
-        } catch {
-            stopsList.innerHTML = '<li style="color:#999;">Error loading stops</li>';
-        }
-    }
+    stopsList.innerHTML = '';
+    try {
+        const stops = typeof props.nearby_stops === 'string' ? JSON.parse(props.nearby_stops) : (props.nearby_stops||[]);
+        if (stops.length === 0) stopsList.innerHTML='<li style="color:#999;">No stops within catchment</li>';
+        else stops.forEach(stop=>{
+            const li=document.createElement('li');
+            li.innerHTML = `${getModeIcon(stop.mode)} <strong>${stop.stop_name}</strong> • ${stop.distance_m} m • ${stop.walk_time_min} min walk`;
+            stopsList.appendChild(li);
+        });
+    } catch { stopsList.innerHTML='<li style="color:#999;">Error loading stops</li>'; }
 
-    // Show info panel
+    // Show panel
     infoPanel.classList.add('show');
 }
+
+// Close button
+if (closeBtn && infoPanel) {
+    closeBtn.addEventListener('click', ()=>infoPanel.classList.remove('show'));
+}
+
+// Show panel by default on desktop
+if (window.innerWidth > 768) infoPanel.classList.add('show');
 
 // ==============================
 // Add PTAL Layer
 // ==============================
 function addPTALLayer(data) {
     if (ptalLayer) ptalLayer.clearLayers();
-    ptalLayer = L.geoJSON(data, { style, onEachFeature }).addTo(map);
+    ptalLayer = L.geoJSON(data, {style, onEachFeature}).addTo(map);
     map.fitBounds(ptalLayer.getBounds());
 }
 
 // ==============================
-// PTAL Loader (GZ first, fallback to plain JSON)
+// PTAL Loader (gz fallback)
 // ==============================
 async function loadPTAL() {
     let data = null;
-
     try {
         const resGz = await fetch(PTAL_GZ_URL);
         if (resGz.ok) {
             const buffer = await resGz.arrayBuffer();
-            const decompressed = pako.ungzip(new Uint8Array(buffer), { to:'string' });
+            const decompressed = pako.ungzip(new Uint8Array(buffer), {to:'string'});
             data = JSON.parse(decompressed);
             console.log("PTAL features (gz):", data.features.length);
         }
-    } catch (err) {
-        console.warn("Failed to load gz, trying plain JSON:", err);
-    }
-
+    } catch {}
     if (!data) {
         try {
             const resJson = await fetch(PTAL_JSON_URL);
@@ -179,24 +180,25 @@ async function loadPTAL() {
                 data = await resJson.json();
                 console.log("PTAL features (json):", data.features.length);
             }
-        } catch (err) {
-            console.error("Failed to load PTAL entirely:", err);
-        }
+        } catch (err) { console.error("Failed to load PTAL entirely:", err); }
     }
-
     if (data) addPTALLayer(data);
 }
 
 // ==============================
-// UI helpers
+// Legend toggle (mobile)
 // ==============================
-function setText(id, text) { const el = document.getElementById(id); if(el) el.textContent=text; }
-function setHTML(id, html) { const el = document.getElementById(id); if(el) el.innerHTML=html; }
-function toggleDisplay(id, show) { const el=document.getElementById(id); if(el) el.style.display=show?'block':'none'; }
-function toggleClass(id, cls, add) { const el=document.getElementById(id); if(el) el.classList.toggle(cls, add); }
+const legend = document.getElementById('legend');
+const legendToggle = document.getElementById('legend-toggle');
+if (legend) {
+    if (window.innerWidth > 768) legend.classList.add('expanded');
+}
+if (legend && legendToggle && window.innerWidth <= 768) {
+    legendToggle.addEventListener('click', ()=>legend.classList.toggle('expanded'));
+}
 
 // ==============================
-// Mismatch toggle
+// Mismatch Toggle
 // ==============================
 const mismatchToggle = document.getElementById('mismatch-toggle');
 if (mismatchToggle) {
@@ -207,37 +209,12 @@ if (mismatchToggle) {
 }
 
 // ==============================
-// Legend toggle
-// ==============================
-const legend = document.getElementById('legend');
-const legendToggle = document.getElementById('legend-toggle');
-
-if (legend) {
-    // Desktop expanded by default
-    if (window.innerWidth > 768) legend.classList.add('expanded');
-}
-
-if (legend && legendToggle && window.innerWidth <= 768) {
-    legendToggle.addEventListener('click', () => legend.classList.toggle('expanded'));
-}
-
-// ==============================
-// Info panel
-// ==============================
-const infoPanel = document.getElementById('info-panel');
-const closeBtn = document.getElementById('close-panel');
-
-if (closeBtn && infoPanel) {
-    closeBtn.addEventListener('click', () => infoPanel.classList.remove('show'));
-}
-
-// ==============================
 // Footer metadata
 // ==============================
-setText('version', APP_VERSION);
-setText('ptal-thresholds', PTAL_THRESHOLDS_TEXT);
+document.getElementById('version').textContent = APP_VERSION;
+document.getElementById('ptal-thresholds').textContent = PTAL_THRESHOLDS_TEXT;
 
 // ==============================
-// Load PTAL data
+// Load PTAL Data
 // ==============================
 loadPTAL();
