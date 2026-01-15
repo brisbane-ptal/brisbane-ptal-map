@@ -25,49 +25,42 @@ function onEachFeature(feature, layer) {
 
 // Load PTAL data with gz-first fallback
 async function loadPTAL() {
+    let data = null;
+
+    // 1️ Try gzipped first
     try {
-        // Try gzipped file first
         const resGz = await fetch(PTAL_GZ_URL);
-        if (!resGz.ok) throw new Error(`HTTP ${resGz.status} (gz)`);
-
-        const buffer = await resGz.arrayBuffer();
-        const decompressed = pako.ungzip(new Uint8Array(buffer), { to: 'string' });
-        const dataGz = JSON.parse(decompressed);
-
-        console.log("PTAL features loaded (gz):", dataGz.features.length);
-        addPTALLayer(dataGz);
-
+        if (resGz.ok) {
+            const buffer = await resGz.arrayBuffer();
+            const decompressed = pako.ungzip(new Uint8Array(buffer), { to: 'string' });
+            data = JSON.parse(decompressed);
+            console.log("PTAL loaded from gz:", data.features.length);
+        } else {
+            console.warn("PTAL gz fetch failed:", resGz.status);
+        }
     } catch (gzErr) {
-        // gz failed, fallback to plain GeoJSON
-        console.warn("Failed to load gz, falling back to plain GeoJSON:", gzErr);
+        console.warn("Failed to load gz:", gzErr);
+    }
 
+    // 2️ Fallback to plain GeoJSON if gz failed
+    if (!data) {
         try {
             const resJson = await fetch(PTAL_JSON_URL);
-            if (!resJson.ok) throw new Error(`HTTP ${resJson.status} (json)`);
-
-            const dataJson = await resJson.json();
-            console.log("PTAL features loaded (json):", dataJson.features.length);
-            addPTALLayer(dataJson);
-
+            if (resJson.ok) {
+                data = await resJson.json();
+                console.log("PTAL loaded from plain JSON:", data.features.length);
+            } else {
+                console.error("PTAL JSON fetch failed:", resJson.status);
+            }
         } catch (jsonErr) {
-            // Only log errors, no alert
             console.error("Failed to load PTAL data entirely:", jsonErr);
         }
     }
-}
 
-// Add the PTAL layer to the map
-function addPTALLayer(data) {
-    if (ptalLayer) {
-        ptalLayer.clearLayers();
+    // 3️ Add layer if data exists
+    if (data) {
+        addPTALLayer(data);
     }
-
-    ptalLayer = L.geoJSON(data, {
-        style,
-        onEachFeature
-    }).addTo(map);
-
-    map.fitBounds(ptalLayer.getBounds());
 }
 
 // --------------------
