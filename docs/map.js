@@ -4,115 +4,27 @@
 const APP_VERSION = "v0.3 – Jan 2026";
 const PTAL_THRESHOLDS_TEXT = "PTAL thresholds: 1 <10 · 2 ≥10 · 3 ≥50 · 4 ≥120";
 
-// --------------------
-// PTAL Loader (GZ first, fallback to plain JSON)
-// --------------------
-
+// ==============================
+// PTAL URLs
+// ==============================
 const PTAL_GZ_URL = "https://raw.githubusercontent.com/brisbane-ptal/brisbane-ptal-map/main/docs/brisbane_ptal_final.geojson.gz";
 const PTAL_JSON_URL = "https://raw.githubusercontent.com/brisbane-ptal/brisbane-ptal-map/main/docs/brisbane_ptal_final.geojson";
 
 let ptalLayer = null;
+let showMismatchOnly = false;
 
-// Example style and feature popup function
-const style = {
-    color: "#ff0000",
-    weight: 1,
-    opacity: 0.5
-};
-function onEachFeature(feature, layer) {
-    layer.bindPopup(`PTAL Score: ${feature.properties.ptal}`);
-}
-
-// Load PTAL data with gz-first fallback
-async function loadPTAL() {
-    let data = null;
-
-    // Try gzipped first
-    try {
-        const resGz = await fetch(PTAL_GZ_URL);
-        if (resGz.ok) {
-            const buffer = await resGz.arrayBuffer();
-            const decompressed = pako.ungzip(new Uint8Array(buffer), { to: 'string' });
-            data = JSON.parse(decompressed);
-            console.log("PTAL features (gz):", data.features.length);
-        } else {
-            console.warn("PTAL gz fetch failed:", resGz.status);
-        }
-    } catch (gzErr) {
-        console.warn("Failed to load gz:", gzErr);
-    }
-
-    // Fallback to plain GeoJSON
-    if (!data) {
-        try {
-            const resJson = await fetch(PTAL_JSON_URL);
-            if (resJson.ok) {
-                data = await resJson.json();
-                console.log("PTAL features (json):", data.features.length);
-            } else {
-                console.error("PTAL JSON fetch failed:", resJson.status);
-            }
-        } catch (jsonErr) {
-            console.error("Failed to load PTAL data entirely:", jsonErr);
-        }
-    }
-
-    // Add layer if data exists
-    if (data) {
-        addPTALLayer(data);
-    }
-}
-
-// --------------------
+// ==============================
 // Map Initialization
-// --------------------
+// ==============================
 const map = L.map('map').setView([-27.4705, 153.0260], 12);
 
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '© OpenStreetMap contributors'
-}).addTo(map);
-
-// Call PTAL loader after map is ready
-loadPTAL();
-
-function addPTALLayer(data) {
-    ptalLayer = L.geoJSON(data, {
-        style,
-        onEachFeature
-    }).addTo(map);
-    map.fitBounds(ptalLayer.getBounds());
-}
-function storageAvailable(type) {
-    try {
-        var storage = window[type];
-        const testKey = "__storage_test__";
-        storage.setItem(testKey, "1");
-        storage.removeItem(testKey);
-        return true;
-    } catch(e) {
-        return false;
-    }
-}
-
-const canUseStorage = storageAvailable('localStorage');
-
-// Example: only use storage if allowed
-if (canUseStorage) {
-    localStorage.setItem("lastPTALLoad", Date.now());
-}
-// ==============================
-// Initialize map centered on Brisbane
-// ==============================
-const map = L.map('map').setView([-27.4650, 153.0242], 13);
-
-// Base layer
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '© OpenStreetMap contributors',
     maxZoom: 18
 }).addTo(map);
 
 // ==============================
-// PTAL helpers
+// PTAL Styling & Feature Helpers
 // ==============================
 function getPTALColor(ptal) {
     switch (ptal) {
@@ -125,12 +37,7 @@ function getPTALColor(ptal) {
 }
 
 function getPTALLabel(ptal) {
-    const labels = {
-        4: 'Excellent',
-        3: 'Good',
-        2: 'Moderate',
-        1: 'Poor'
-    };
+    const labels = { 4:'Excellent', 3:'Good', 2:'Moderate', 1:'Poor' };
     return labels[ptal] || 'Unknown';
 }
 
@@ -152,62 +59,31 @@ function getModeIcon(mode) {
 }
 
 // ==============================
-// Globals
-// ==============================
-let ptalLayer;
-let showMismatchOnly = false;
-
-// ==============================
-// Feature styling
+// PTAL Feature Styling & Interaction
 // ==============================
 function style(feature) {
-    const props = feature.properties || {};
-    const ptal = Number(props.ptal);
+    const ptal = Number(feature.properties?.ptal);
+    if (!Number.isFinite(ptal)) return { fillOpacity:0, opacity:0, stroke:false };
 
-    // Guard against malformed PTAL
-    if (!Number.isFinite(ptal)) {
-        return {
-            fillOpacity: 0,
-            opacity: 0,
-            stroke: false
-        };
-    }
-
-    if (showMismatchOnly && !props.mismatch) {
-        return {
-            fillOpacity: 0,
-            opacity: 0,
-            stroke: false
-        };
+    if (showMismatchOnly && !feature.properties?.mismatch) {
+        return { fillOpacity:0, opacity:0, stroke:false };
     }
 
     return {
         fillColor: getPTALColor(ptal),
         weight: 1,
-        opacity: 0.3,
         color: 'white',
+        opacity: 0.3,
         fillOpacity: 0.6,
         cursor: 'pointer'
     };
 }
 
-// ==============================
-// Interaction
-// ==============================
 function highlightFeature(e) {
     const layer = e.target;
-    const props = layer.feature.properties || {};
-    if (showMismatchOnly && !props.mismatch) return;
-
-    layer.setStyle({
-        weight: 3,
-        opacity: 1,
-        fillOpacity: 0.8
-    });
-
-    if (!L.Browser.ie && !L.Browser.opera && !L.Browser.edge) {
-        layer.bringToFront();
-    }
+    if (showMismatchOnly && !layer.feature.properties?.mismatch) return;
+    layer.setStyle({ weight:3, opacity:1, fillOpacity:0.8 });
+    if (!L.Browser.ie && !L.Browser.opera && !L.Browser.edge) layer.bringToFront();
 }
 
 function resetHighlight(e) {
@@ -224,7 +100,6 @@ function showInfo(e) {
     setText('zone-code', props.Zone_code || 'Unknown');
     setText('recommended-height', getRecommendedHeight(ptal));
 
-    // Height handling
     const heightDisplay = props.max_storeys >= 90
         ? 'Unlimited*<br><small style="color:#666;">*Airport height limits apply</small>'
         : `${props.max_storeys} storeys`;
@@ -239,20 +114,13 @@ function showInfo(e) {
         toggleDisplay('capacity-info', false);
     }
 
-    // Stops list
     const stopsList = document.getElementById('nearby-stops');
-    if (!stopsList) return;
-
-    stopsList.innerHTML = '';
-    try {
-        const stops = typeof props.nearby_stops === 'string'
-            ? JSON.parse(props.nearby_stops)
-            : (props.nearby_stops || []);
-
-        if (stops.length === 0) {
-            stopsList.innerHTML = '<li style="color:#999;">No stops within catchment</li>';
-        } else {
-            stops.forEach(stop => {
+    if (stopsList) {
+        stopsList.innerHTML = '';
+        try {
+            const stops = typeof props.nearby_stops === 'string' ? JSON.parse(props.nearby_stops) : (props.nearby_stops || []);
+            if (stops.length === 0) stopsList.innerHTML = '<li style="color:#999;">No stops within catchment</li>';
+            else stops.forEach(stop => {
                 const li = document.createElement('li');
                 li.innerHTML = `
                     ${getModeIcon(stop.mode)} <strong>${stop.stop_name}</strong><br>
@@ -262,76 +130,77 @@ function showInfo(e) {
                 li.style.marginBottom = '10px';
                 stopsList.appendChild(li);
             });
+        } catch {
+            stopsList.innerHTML = '<li style="color:#999;">Error loading stops</li>';
         }
-    } catch {
-        stopsList.innerHTML = '<li style="color:#999;">Error loading stops</li>';
     }
 
     toggleClass('info-panel', 'hidden', false);
 }
 
 function onEachFeature(feature, layer) {
-    layer.on({
-        mouseover: highlightFeature,
-        mouseout: resetHighlight,
-        click: showInfo
-    });
-
+    layer.on({ mouseover: highlightFeature, mouseout: resetHighlight, click: showInfo });
     const ptal = Number(feature.properties?.ptal);
     if (Number.isFinite(ptal)) {
-        layer.bindTooltip(
-            `PTAL ${ptal} (${getPTALLabel(ptal)})<br>Click for details`,
-            { sticky: true, opacity: 0.9 }
-        );
+        layer.bindTooltip(`PTAL ${ptal} (${getPTALLabel(ptal)})<br>Click for details`, { sticky:true, opacity:0.9 });
     }
 }
 
 // ==============================
-// Load data
+// Add PTAL Layer
 // ==============================
-fetch("https://raw.githubusercontent.com/brisbane-ptal/brisbane-ptal-map/main/docs/brisbane_ptal_final.geojson.gz")
-    .then(r => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        return r.json();
-    })
-    .then(data => {
-        console.log("PTAL features:", data.features.length);
-        ptalLayer = L.geoJSON(data, {
-            style,
-            onEachFeature
-        }).addTo(map);
-        map.fitBounds(ptalLayer.getBounds());
-    })
-    .catch(err => {
-        console.error("PTAL load error:", err);
-        alert("Failed to load PTAL data");
-    });
-
-// ==============================
-// UI helpers (safe)
-// ==============================
-function setText(id, text) {
-    const el = document.getElementById(id);
-    if (el) el.textContent = text;
-}
-
-function setHTML(id, html) {
-    const el = document.getElementById(id);
-    if (el) el.innerHTML = html;
-}
-
-function toggleDisplay(id, show) {
-    const el = document.getElementById(id);
-    if (el) el.style.display = show ? 'block' : 'none';
-}
-
-function toggleClass(id, cls, add) {
-    const el = document.getElementById(id);
-    if (el) el.classList.toggle(cls, add);
+function addPTALLayer(data) {
+    if (ptalLayer) ptalLayer.clearLayers();
+    ptalLayer = L.geoJSON(data, { style, onEachFeature }).addTo(map);
+    map.fitBounds(ptalLayer.getBounds());
 }
 
 // ==============================
-// Controls
+// PTAL Loader (GZ first, fallback to plain)
+// ==============================
+async function loadPTAL() {
+    let data = null;
+
+    // Try gzipped first
+    try {
+        const resGz = await fetch(PTAL_GZ_URL);
+        if (resGz.ok) {
+            const buffer = await resGz.arrayBuffer();
+            const decompressed = pako.ungzip(new Uint8Array(buffer), { to:'string' });
+            data = JSON.parse(decompressed);
+            console.log("PTAL features (gz):", data.features.length);
+        }
+    } catch (err) {
+        console.warn("Failed to load gz, trying plain JSON:", err);
+    }
+
+    // Fallback to plain GeoJSON
+    if (!data) {
+        try {
+            const resJson = await fetch(PTAL_JSON_URL);
+            if (resJson.ok) {
+                data = await resJson.json();
+                console.log("PTAL features (json):", data.features.length);
+            }
+        } catch (err) {
+            console.error("Failed to load PTAL entirely:", err);
+        }
+    }
+
+    // Add layer if we have data
+    if (data) addPTALLayer(data);
+}
+
+// ==============================
+// UI helpers
+// ==============================
+function setText(id, text) { const el=document.getElementById(id); if(el) el.textContent=text; }
+function setHTML(id, html) { const el=document.getElementById(id); if(el) el.innerHTML=html; }
+function toggleDisplay(id, show) { const el=document.getElementById(id); if(el) el.style.display=show?'block':'none'; }
+function toggleClass(id, cls, add) { const el=document.getElementById(id); if(el) el.classList.toggle(cls, add); }
+
+// ==============================
+// Mismatch Toggle
 // ==============================
 const mismatchToggle = document.getElementById('mismatch-toggle');
 if (mismatchToggle) {
@@ -346,3 +215,8 @@ if (mismatchToggle) {
 // ==============================
 setText('version', APP_VERSION);
 setText('ptal-thresholds', PTAL_THRESHOLDS_TEXT);
+
+// ==============================
+// Load PTAL Data
+// ==============================
+loadPTAL();
