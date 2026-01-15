@@ -8,7 +8,7 @@ const PTAL_THRESHOLDS_TEXT = "PTAL thresholds: 1 <10 · 2 ≥10 · 3 ≥50 · 4 
 // PTAL URLs
 // ==============================
 const PTAL_GZ_URL = "https://raw.githubusercontent.com/brisbane-ptal/brisbane-ptal-map/main/docs/brisbane_ptal_final.geojson.gz";
-const PTAL_JSON_URL = "https://raw.githubusercontent.com/brisbane-ptal/brisbane-ptal-map/main/docs/brisbane_ptal_final.geojson";
+const PTAL_JSON_URL = "https://raw.githubusercontent.com/brisbane-ptal/brisbane_ptal-map/main/docs/brisbane_ptal_final.geojson";
 
 let ptalLayer = null;
 let showMismatchOnly = false;
@@ -43,10 +43,10 @@ function getPTALLabel(ptal) {
 
 function getRecommendedHeight(ptal) {
     switch (ptal) {
-        case 4: return '12–20 storeys';
-        case 3: return '8–12 storeys';
-        case 2: return '5–8 storeys';
-        case 1: return '3–5 storeys';
+        case 4: return '15+ storeys';
+        case 3: return '8–15 storeys';
+        case 2: return '3–8 storeys';
+        case 1: return '2–3 storeys';
         default: return 'N/A';
     }
 }
@@ -65,9 +65,7 @@ function style(feature) {
     const ptal = Number(feature.properties?.ptal);
     if (!Number.isFinite(ptal)) return { fillOpacity:0, opacity:0, stroke:false };
 
-    if (showMismatchOnly && !feature.properties?.mismatch) {
-        return { fillOpacity:0, opacity:0, stroke:false };
-    }
+    if (showMismatchOnly && !feature.properties?.mismatch) return { fillOpacity:0, opacity:0, stroke:false };
 
     return {
         fillColor: getPTALColor(ptal),
@@ -90,7 +88,14 @@ function resetHighlight(e) {
     if (ptalLayer) ptalLayer.resetStyle(e.target);
 }
 
-// Show info panel for both desktop and mobile
+function onEachFeature(feature, layer) {
+    layer.on({ mouseover: highlightFeature, mouseout: resetHighlight, click: showInfo });
+    const ptal = Number(feature.properties?.ptal);
+    if (Number.isFinite(ptal)) {
+        layer.bindTooltip(`PTAL ${ptal} (${getPTALLabel(ptal)})<br>Click for details`, { sticky:true, opacity:0.9 });
+    }
+}
+
 function showInfo(e) {
     const props = e.target.feature.properties || {};
     const ptal = Number(props.ptal);
@@ -136,25 +141,8 @@ function showInfo(e) {
         }
     }
 
-    // Show the panel
+    // Show info panel
     infoPanel.classList.add('show');
-}
-
-// Close button always hides panel
-if (closeBtn && infoPanel) {
-    closeBtn.addEventListener('click', () => {
-        infoPanel.classList.remove('show');
-    });
-}
-
-// Ensure desktop panel shows by default
-infoPanel.classList.add('show');
-function onEachFeature(feature, layer) {
-    layer.on({ mouseover: highlightFeature, mouseout: resetHighlight, click: showInfo });
-    const ptal = Number(feature.properties?.ptal);
-    if (Number.isFinite(ptal)) {
-        layer.bindTooltip(`PTAL ${ptal} (${getPTALLabel(ptal)})<br>Click for details`, { sticky:true, opacity:0.9 });
-    }
 }
 
 // ==============================
@@ -167,12 +155,11 @@ function addPTALLayer(data) {
 }
 
 // ==============================
-// PTAL Loader (GZ first, fallback to plain)
+// PTAL Loader (GZ first, fallback to plain JSON)
 // ==============================
 async function loadPTAL() {
     let data = null;
 
-    // Try gzipped first
     try {
         const resGz = await fetch(PTAL_GZ_URL);
         if (resGz.ok) {
@@ -185,7 +172,6 @@ async function loadPTAL() {
         console.warn("Failed to load gz, trying plain JSON:", err);
     }
 
-    // Fallback to plain GeoJSON
     if (!data) {
         try {
             const resJson = await fetch(PTAL_JSON_URL);
@@ -198,20 +184,19 @@ async function loadPTAL() {
         }
     }
 
-    // Add layer if we have data
     if (data) addPTALLayer(data);
 }
 
 // ==============================
 // UI helpers
 // ==============================
-function setText(id, text) { const el=document.getElementById(id); if(el) el.textContent=text; }
-function setHTML(id, html) { const el=document.getElementById(id); if(el) el.innerHTML=html; }
+function setText(id, text) { const el = document.getElementById(id); if(el) el.textContent=text; }
+function setHTML(id, html) { const el = document.getElementById(id); if(el) el.innerHTML=html; }
 function toggleDisplay(id, show) { const el=document.getElementById(id); if(el) el.style.display=show?'block':'none'; }
 function toggleClass(id, cls, add) { const el=document.getElementById(id); if(el) el.classList.toggle(cls, add); }
 
 // ==============================
-// Mismatch Toggle
+// Mismatch toggle
 // ==============================
 const mismatchToggle = document.getElementById('mismatch-toggle');
 if (mismatchToggle) {
@@ -220,29 +205,30 @@ if (mismatchToggle) {
         if (ptalLayer) ptalLayer.setStyle(style);
     });
 }
+
 // ==============================
-// Legend toggle for mobile
+// Legend toggle
 // ==============================
 const legend = document.getElementById('legend');
 const legendToggle = document.getElementById('legend-toggle');
 
-if (legend && legendToggle) {
-    legendToggle.addEventListener('click', () => {
-        legend.classList.toggle('expanded');
-    });
+if (legend) {
+    // Desktop expanded by default
+    if (window.innerWidth > 768) legend.classList.add('expanded');
+}
+
+if (legend && legendToggle && window.innerWidth <= 768) {
+    legendToggle.addEventListener('click', () => legend.classList.toggle('expanded'));
 }
 
 // ==============================
-// Info panel slide-up toggle
+// Info panel
 // ==============================
 const infoPanel = document.getElementById('info-panel');
 const closeBtn = document.getElementById('close-panel');
 
 if (closeBtn && infoPanel) {
-    closeBtn.addEventListener('click', () => {
-        // Hide panel on both mobile and desktop
-        infoPanel.classList.remove('show');
-    });
+    closeBtn.addEventListener('click', () => infoPanel.classList.remove('show'));
 }
 
 // ==============================
@@ -252,6 +238,6 @@ setText('version', APP_VERSION);
 setText('ptal-thresholds', PTAL_THRESHOLDS_TEXT);
 
 // ==============================
-// Load PTAL Data
+// Load PTAL data
 // ==============================
 loadPTAL();
