@@ -4,6 +4,21 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Brisbane PTAL Explorer - Public Transport Accessibility</title>
+  <meta name="description" content="Interactive map showing public transport accessibility levels across Brisbane. Identify planning mismatches where excellent transit is restricted to low-rise development.">
+
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://brisbane-ptal.github.io/explorer/">
+  <meta property="og:title" content="Brisbane PTAL Explorer">
+  <meta property="og:description" content="Interactive map showing public transport accessibility levels across Brisbane. Identify planning mismatches where excellent transit is restricted to low-rise development.">
+  <meta property="og:image" content="https://brisbane-ptal.github.io/explorer/preview.png">
+
+  <!-- Twitter -->
+  <meta property="twitter:card" content="summary_large_image">
+  <meta property="twitter:url" content="https://brisbane-ptal.github.io/explorer/">
+  <meta property="twitter:title" content="Brisbane PTAL Explorer">
+  <meta property="twitter:description" content="Interactive map showing public transport accessibility across Brisbane">
+  <meta property="twitter:image" content="https://brisbane-ptal.github.io/explorer/preview.png">
 
   <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -39,38 +54,37 @@
 
   <!-- Legend (desktop: top-right, mobile: header-controlled drawer via CSS class .open) -->
   <div id="legend" aria-label="Legend">
-    <h3>PTAL Score</h3>
-
-    <div class="legend-row"><span class="legend-color ptal-4"></span> 4 – Excellent</div>
-    <div class="legend-row"><span class="legend-color ptal-3"></span> 3 – Good</div>
-    <div class="legend-row"><span class="legend-color ptal-2"></span> 2 – Moderate</div>
-    <div class="legend-row"><span class="legend-color ptal-1"></span> 1 – Poor</div>
-
-    <div class="legend-divider"></div>
-
-    <!-- Single Mismatch Filter -->
-    <label style="display:flex; align-items:center; gap:10px; cursor:pointer; margin-bottom:8px;">
-      <input type="checkbox" id="mismatch-toggle" />
-      <span style="font-size:14px;">Show mismatches only</span>
-    </label>
-
-    <!-- Mismatch Legend -->
-    <div style="margin-left:26px; margin-bottom:16px;">
-      <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
-        <div style="width:18px; height:18px; border:2px solid #ff0000; background:rgba(255,255,255,0.3);"></div>
-        <span style="font-size:12px; color:#666;">Excellent transit but height limits prevent density</span>
-      </div>
-      
-      <div style="display:flex; align-items:center; gap:8px;">
-        <div style="width:18px; height:18px; border:2px solid #9932CC; background:rgba(255,255,255,0.3);"></div>
-        <span style="font-size:12px; color:#666;">Poor transit does not serve allowed density</span>
-      </div>
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+      <h3 style="margin:0;">PTAL Score</h3>
+      <button id="legend-toggle" type="button" aria-label="Toggle legend" style="display:none; background:none; border:none; font-size:1.2rem; cursor:pointer; color:#666;">−</button>
     </div>
 
-    <!-- Disclaimers -->
-    <div class="legend-divider"></div>
-    <div class="legend-disclaimer">
-      <p><strong>Note:</strong> Height controls are approximate. Grid cells may span multiple zones – displayed zone represents dominant zoning. Local area overlays, character codes, and site-specific provisions may apply.</p>
+    <div id="legend-content">
+      <div class="legend-row"><span class="legend-color ptal-4"></span> 4 – Excellent</div>
+      <div class="legend-row"><span class="legend-color ptal-3"></span> 3 – Good</div>
+      <div class="legend-row"><span class="legend-color ptal-2"></span> 2 – Moderate</div>
+      <div class="legend-row"><span class="legend-color ptal-1"></span> 1 – Poor</div>
+
+      <div class="legend-divider"></div>
+
+      <!-- Single Mismatch Filter -->
+      <label style="display:flex; align-items:center; gap:10px; cursor:pointer; margin-bottom:8px;">
+        <input type="checkbox" id="mismatch-toggle" />
+        <span style="font-size:14px;">Show mismatches only</span>
+      </label>
+
+      <!-- Mismatch Legend -->
+      <div style="margin-left:26px; margin-bottom:8px;">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
+          <div style="width:18px; height:18px; border:2px solid #ff0000; background:rgba(255,255,255,0.3);"></div>
+          <span style="font-size:12px; color:#666;">Excellent transit but height limits prevent density</span>
+        </div>
+        
+        <div style="display:flex; align-items:center; gap:8px;">
+          <div style="width:18px; height:18px; border:2px solid #9932CC; background:rgba(255,255,255,0.3);"></div>
+          <span style="font-size:12px; color:#666;">Poor transit does not serve allowed density</span>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -115,11 +129,15 @@
 
   <footer>
     <p>
-      Built by <a href="https://github.com/brisbane-ptal" target="_blank" rel="noopener">PTAL Brisbane</a> |
+      <a href="https://github.com/brisbane-ptal/explorer" target="_blank" rel="noopener">About</a> |
+      <a href="https://github.com/brisbane-ptal/explorer/blob/main/methodology.md" target="_blank" rel="noopener">Methodology</a> |
       Data: Brisbane City Council, TransLink
     </p>
     <div class="meta">
       <span id="version"></span> · <span id="ptal-thresholds"></span>
+    </div>
+    <div class="disclaimer">
+      <strong>Note:</strong> Height controls are approximate. Grid cells may span multiple zones – displayed zone represents dominant zoning. Local area overlays, character codes, and site-specific provisions may apply.
     </div>
   </footer>
 
