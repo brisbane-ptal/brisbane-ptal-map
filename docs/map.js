@@ -229,11 +229,12 @@ const closeBtn = document.getElementById('close-panel');
 
 if (closeBtn && infoPanel) {
     closeBtn.addEventListener('click', () => {
+        // Hide panel on both mobile and desktop
         infoPanel.classList.remove('show');
     });
 }
 
-// Update showInfo to slide up on mobile
+// When a cell is clicked
 function showInfo(e) {
     const props = e.target.feature.properties || {};
     const ptal = Number(props.ptal);
@@ -259,6 +260,7 @@ function showInfo(e) {
         toggleDisplay('capacity-info', false);
     }
 
+    // Stops list
     const stopsList = document.getElementById('nearby-stops');
     if (stopsList) {
         stopsList.innerHTML = '';
@@ -280,7 +282,7 @@ function showInfo(e) {
         }
     }
 
-    // Show panel (slide-up on mobile)
+    // Show the panel (works for desktop and mobile)
     infoPanel.classList.add('show');
 }
 // ==============================
