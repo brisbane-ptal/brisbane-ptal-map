@@ -151,10 +151,10 @@ All catchments use pedestrian network distance (actual walkable paths via footpa
 
 | Band | Threshold | Interpretation |
 |------|-----------|----------------|
-| PTAL 4 | ≥100 effective units/hr | Excellent accessibility; trunk infrastructure with high frequency; turn-up-and-go service |
-| PTAL 3 | ≥40 effective units/hr | Good accessibility; either lower-frequency trunk OR excellent bus network |
-| PTAL 2 | ≥15 effective units/hr | Basic service; single decent route or multiple infrequent routes; check timetable |
-| PTAL 1 | <15 effective units/hr | Poor connectivity; car-dependent location |
+| PTAL 4 | ≥120 effective units/hr | Excellent accessibility; trunk infrastructure with high frequency; turn-up-and-go service |
+| PTAL 3 | ≥50 effective units/hr | Good accessibility; either lower-frequency trunk OR excellent bus network |
+| PTAL 2 | ≥10 effective units/hr | Basic service; single decent route or multiple infrequent routes; check timetable |
+| PTAL 1 | <10 effective units/hr | Poor connectivity; car-dependent location |
 
 Thresholds calibrated to Brisbane conditions based on sample locations with known accessibility characteristics.
 
