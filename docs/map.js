@@ -7,7 +7,7 @@ const PTAL_THRESHOLDS_TEXT = "PTAL thresholds: 1 <15 · 2 ≥15 · 3 ≥40 · 4 
 // ==============================
 // Data source (supports .geojson OR .geojson.gz)
 // ==============================
-const PTAL_DATA_URL = "brisbane_ptal_final.geojson.gz"; 
+const PTAL_DATA_URL = "brisbane_ptal_final.geojson"; 
 
 // ==============================
 // Initialize map centered on Brisbane
