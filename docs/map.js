@@ -7,10 +7,68 @@ const PTAL_THRESHOLDS_TEXT = "PTAL thresholds: 1 <10 · 2 ≥10 · 3 ≥50 · 4 
 // ==============================
 // Data source (supports .geojson OR .geojson.gz)
 // ==============================
-const PTAL_DATA_URL = "brisbane_ptal_final.geojson"; 
-// If you gzip the file, change to:
-// const PTAL_DATA_URL = "brisbane_ptal_final.geojson.gz";
+const PTAL_GZ_URL = "https://raw.githubusercontent.com/brisbane-ptal/brisbane-ptal-map/main/docs/brisbane_ptal_final.geojson.gz";
+const PTAL_JSON_URL = "https://raw.githubusercontent.com/brisbane-ptal/brisbane-ptal-map/main/docs/brisbane_ptal_final.geojson";
 
+async function loadPTAL() {
+    try {
+        // Try fetching the gzipped file first
+        const res = await fetch(PTAL_GZ_URL);
+        if (!res.ok) throw new Error(`HTTP ${res.status} for gz`);
+
+        // Read as ArrayBuffer (binary)
+        const arrayBuffer = await res.arrayBuffer();
+
+        // Decompress using pako
+        const decompressed = pako.ungzip(new Uint8Array(arrayBuffer), { to: 'string' });
+        const data = JSON.parse(decompressed);
+
+        console.log("PTAL features (gz):", data.features.length);
+        addPTALLayer(data);
+    } catch (err) {
+        console.warn("Failed to load gz, falling back to plain geojson:", err);
+
+        // fallback to plain geojson
+        try {
+            const res2 = await fetch(PTAL_JSON_URL);
+            if (!res2.ok) throw new Error(`HTTP ${res2.status} for json`);
+            const data2 = await res2.json();
+
+            console.log("PTAL features (json):", data2.features.length);
+            addPTALLayer(data2);
+        } catch (err2) {
+            console.error("Failed to load PTAL data:", err2);
+            alert("Failed to load PTAL data");
+        }
+    }
+}
+loadPTAL(); 
+
+function addPTALLayer(data) {
+    ptalLayer = L.geoJSON(data, {
+        style,
+        onEachFeature
+    }).addTo(map);
+    map.fitBounds(ptalLayer.getBounds());
+}
+function storageAvailable(type) {
+    try {
+        var storage = window[type];
+        const testKey = "__storage_test__";
+        storage.setItem(testKey, "1");
+        storage.removeItem(testKey);
+        return true;
+    } catch(e) {
+        return false;
+    }
+}
+
+const canUseStorage = storageAvailable('localStorage');
+
+// Example: only use storage if allowed
+if (canUseStorage) {
+    localStorage.setItem("lastPTALLoad", Date.now());
+}
 // ==============================
 // Initialize map centered on Brisbane
 // ==============================
