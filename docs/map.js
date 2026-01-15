@@ -4,45 +4,82 @@
 const APP_VERSION = "v0.3 – Jan 2026";
 const PTAL_THRESHOLDS_TEXT = "PTAL thresholds: 1 <10 · 2 ≥10 · 3 ≥50 · 4 ≥120";
 
-// ==============================
-// Data source (supports .geojson OR .geojson.gz)
-// ==============================
+// --------------------
+// PTAL Loader (GZ first, fallback to plain JSON)
+// --------------------
+
 const PTAL_GZ_URL = "https://raw.githubusercontent.com/brisbane-ptal/brisbane-ptal-map/main/docs/brisbane_ptal_final.geojson.gz";
 const PTAL_JSON_URL = "https://raw.githubusercontent.com/brisbane-ptal/brisbane-ptal-map/main/docs/brisbane_ptal_final.geojson";
 
+let ptalLayer = null;
+
+// Example style and feature popup function
+const style = {
+    color: "#ff0000",
+    weight: 1,
+    opacity: 0.5
+};
+function onEachFeature(feature, layer) {
+    layer.bindPopup(`PTAL Score: ${feature.properties.ptal}`);
+}
+
+// Load PTAL data with gz-first fallback
 async function loadPTAL() {
     try {
-        // Try fetching the gzipped file first
-        const res = await fetch(PTAL_GZ_URL);
-        if (!res.ok) throw new Error(`HTTP ${res.status} for gz`);
+        // 1️⃣ Try gzipped first
+        const resGz = await fetch(PTAL_GZ_URL);
+        if (!resGz.ok) throw new Error(`HTTP ${resGz.status} (gz)`);
 
-        // Read as ArrayBuffer (binary)
-        const arrayBuffer = await res.arrayBuffer();
+        const buffer = await resGz.arrayBuffer();
+        const decompressed = pako.ungzip(new Uint8Array(buffer), { to: 'string' });
+        const dataGz = JSON.parse(decompressed);
 
-        // Decompress using pako
-        const decompressed = pako.ungzip(new Uint8Array(arrayBuffer), { to: 'string' });
-        const data = JSON.parse(decompressed);
+        console.log("PTAL features loaded (gz):", dataGz.features.length);
+        addPTALLayer(dataGz);
 
-        console.log("PTAL features (gz):", data.features.length);
-        addPTALLayer(data);
-    } catch (err) {
-        console.warn("Failed to load gz, falling back to plain geojson:", err);
+    } catch (gzErr) {
+        console.warn("Failed to load gz, falling back to plain GeoJSON:", gzErr);
 
-        // fallback to plain geojson
         try {
-            const res2 = await fetch(PTAL_JSON_URL);
-            if (!res2.ok) throw new Error(`HTTP ${res2.status} for json`);
-            const data2 = await res2.json();
+            const resJson = await fetch(PTAL_JSON_URL);
+            if (!resJson.ok) throw new Error(`HTTP ${resJson.status} (json)`);
 
-            console.log("PTAL features (json):", data2.features.length);
-            addPTALLayer(data2);
-        } catch (err2) {
-            console.error("Failed to load PTAL data:", err2);
-            alert("Failed to load PTAL data");
+            const dataJson = await resJson.json();
+            console.log("PTAL features loaded (json):", dataJson.features.length);
+            addPTALLayer(dataJson);
+
+        } catch (jsonErr) {
+            console.error("Failed to load PTAL data:", jsonErr);
+            alert("Failed to load PTAL data. Please try again later.");
         }
     }
 }
-loadPTAL(); 
+
+// Add the PTAL layer to the map
+function addPTALLayer(data) {
+    if (ptalLayer) {
+        ptalLayer.clearLayers();
+    }
+
+    ptalLayer = L.geoJSON(data, {
+        style,
+        onEachFeature
+    }).addTo(map);
+
+    map.fitBounds(ptalLayer.getBounds());
+}
+
+// --------------------
+// Map Initialization
+// --------------------
+const map = L.map('map').setView([-27.4705, 153.0260], 12);
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap contributors'
+}).addTo(map);
+
+// Call PTAL loader after map is ready
+loadPTAL();
 
 function addPTALLayer(data) {
     ptalLayer = L.geoJSON(data, {
