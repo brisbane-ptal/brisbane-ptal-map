@@ -90,6 +90,7 @@ function resetHighlight(e) {
     if (ptalLayer) ptalLayer.resetStyle(e.target);
 }
 
+// Show info panel for both desktop and mobile
 function showInfo(e) {
     const props = e.target.feature.properties || {};
     const ptal = Number(props.ptal);
@@ -135,9 +136,19 @@ function showInfo(e) {
         }
     }
 
-    toggleClass('info-panel', 'hidden', false);
+    // Show the panel
+    infoPanel.classList.add('show');
 }
 
+// Close button always hides panel
+if (closeBtn && infoPanel) {
+    closeBtn.addEventListener('click', () => {
+        infoPanel.classList.remove('show');
+    });
+}
+
+// Ensure desktop panel shows by default
+infoPanel.classList.add('show');
 function onEachFeature(feature, layer) {
     layer.on({ mouseover: highlightFeature, mouseout: resetHighlight, click: showInfo });
     const ptal = Number(feature.properties?.ptal);
@@ -234,57 +245,6 @@ if (closeBtn && infoPanel) {
     });
 }
 
-// When a cell is clicked
-function showInfo(e) {
-    const props = e.target.feature.properties || {};
-    const ptal = Number(props.ptal);
-    if (!Number.isFinite(ptal)) return;
-
-    // Populate panel content as before
-    setText('ptal-score', ptal);
-    setText('category-label', getPTALLabel(ptal));
-    setText('zone-code', props.Zone_code || 'Unknown');
-    setText('recommended-height', getRecommendedHeight(ptal));
-
-    const heightDisplay = props.max_storeys >= 90
-        ? 'Unlimited*<br><small style="color:#666;">*Airport height limits apply</small>'
-        : `${props.max_storeys} storeys`;
-    setHTML('max-height', heightDisplay);
-
-    toggleDisplay('mismatch-warning', !!props.mismatch);
-
-    if (props.total_capacity) {
-        toggleDisplay('capacity-info', true);
-        setText('total-capacity', `${props.total_capacity} effective units/hr`);
-    } else {
-        toggleDisplay('capacity-info', false);
-    }
-
-    // Stops list
-    const stopsList = document.getElementById('nearby-stops');
-    if (stopsList) {
-        stopsList.innerHTML = '';
-        try {
-            const stops = typeof props.nearby_stops === 'string' ? JSON.parse(props.nearby_stops) : (props.nearby_stops || []);
-            if (stops.length === 0) stopsList.innerHTML = '<li style="color:#999;">No stops within catchment</li>';
-            else stops.forEach(stop => {
-                const li = document.createElement('li');
-                li.innerHTML = `
-                    ${getModeIcon(stop.mode)} <strong>${stop.stop_name}</strong><br>
-                    <span style="color:#666;font-size:0.9em;">
-                        ${stop.mode} • ${stop.distance_m} m • ${stop.walk_time_min} min walk
-                    </span>`;
-                li.style.marginBottom = '10px';
-                stopsList.appendChild(li);
-            });
-        } catch {
-            stopsList.innerHTML = '<li style="color:#999;">Error loading stops</li>';
-        }
-    }
-
-    // Show the panel (works for desktop and mobile)
-    infoPanel.classList.add('show');
-}
 // ==============================
 // Footer metadata
 // ==============================
