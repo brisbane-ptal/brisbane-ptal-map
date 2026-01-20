@@ -2,36 +2,19 @@
    Brisbane PTAL Explorer — map.js (updated v0.6 - Week 1)
    ========================================================= */
 
-/* ==============================
-   App metadata
-   ============================== */
 const APP_VERSION = "v0.6 – Jan 2026";
 const PTAL_THRESHOLDS_TEXT = "PTAL thresholds: 1 <10 · 2 ≥10 · 3 ≥50 · 4 ≥120";
 
-/* ==============================
-   PTAL URLs
-   ============================== */
-const PTAL_GZ_URL =
-  "https://raw.githubusercontent.com/brisbane-ptal/brisbane-ptal-map/main/docs/brisbane_ptal_final.geojson.gz";
-const PTAL_JSON_URL =
-  "https://raw.githubusercontent.com/brisbane-ptal/brisbane-ptal-map/main/docs/brisbane_ptal_final.geojson";
+const PTAL_GZ_URL = "https://raw.githubusercontent.com/brisbane-ptal/brisbane-ptal-map/main/docs/brisbane_ptal_final.geojson.gz";
+const PTAL_JSON_URL = "https://raw.githubusercontent.com/brisbane-ptal/brisbane-ptal-map/main/docs/brisbane_ptal_final.geojson";
 
-/* ==============================
-   Nominatim config
-   ============================== */
 const NOMINATIM_EMAIL = "";
 
-/* ==============================
-   Globals
-   ============================== */
 let ptalLayer = null;
 let ptalData = null;
 let showMismatchesOnly = false;
 let searchMarker = null;
 
-/* ==============================
-   Map Initialization
-   ============================== */
 const map = L.map("map").setView([-27.4705, 153.0260], 12);
 
 L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
@@ -45,9 +28,6 @@ L.control.scale({
   metric: true
 }).addTo(map);
 
-/* ==============================
-   PTAL Helpers
-   ============================== */
 function getPTALColor(ptal) {
   switch (ptal) {
     case 4: return "#1a9850";
@@ -87,15 +67,10 @@ function getModeLabel(mode) {
   return "Bus";
 }
 
-/* ==============================
-   Overlay Detection (Week 1)
-   ============================== */
 function hasPlanningMismatch(props) {
   const heightMismatch = props.height_mismatch;
   const zone = props.Zone_code;
-  
   if (!zone || zone === "Unknown" || zone === "Mixed") return false;
-  
   return heightMismatch === "under" || heightMismatch === "over";
 }
 
@@ -112,23 +87,15 @@ function hasTransitGap(props) {
   const ptal = Number(props.ptal);
   const maxStoreys = Number(props.max_storeys);
   const zone = props.Zone_code;
-  
   if (!zone || zone === "Unknown" || zone === "Mixed") return false;
-  
   return Number.isFinite(ptal) && Number.isFinite(maxStoreys) && ptal <= 1 && maxStoreys >= 4;
 }
 
-/* ==============================
-   Safe DOM helpers
-   ============================== */
 function $(id) { return document.getElementById(id); }
 function setText(id, text) { const el = $(id); if (el) el.textContent = text ?? ""; }
 function setHTML(id, html) { const el = $(id); if (el) el.innerHTML = html ?? ""; }
 function showEl(id, show) { const el = $(id); if (el) el.style.display = show ? "block" : "none"; }
 
-/* ==============================
-   Styling & Interaction
-   ============================== */
 function style(feature) {
   const props = feature.properties || {};
   const ptal = Number(props.ptal);
@@ -205,9 +172,6 @@ function onEachFeature(feature, layer) {
   }
 }
 
-/* ==============================
-   Info Panel
-   ============================== */
 const infoPanel = $("info-panel");
 const closeBtn = $("close-panel");
 
@@ -252,9 +216,17 @@ function showInfo(e) {
 
   const planningMismatch = hasPlanningMismatch(props);
   const transitGap = hasTransitGap(props);
+  const flood = hasFloodConstraint(props);
+  const parking = hasParkingMismatch(props);
   
   showEl("planning-mismatch-warning", planningMismatch);
   showEl("transit-gap-warning", transitGap);
+  showEl("flood-badge", flood);
+  showEl("parking-badge", parking);
+
+  if (flood) {
+    setText("flood-badge", `🌊 ${props.flood_constraint}`);
+  }
 
   if (props.total_capacity !== undefined && props.total_capacity !== null && props.total_capacity !== "") {
     showEl("capacity-info", true);
@@ -307,9 +279,6 @@ function showInfo(e) {
   }
 }
 
-/* ==============================
-   Add PTAL Layer
-   ============================== */
 function addPTALLayer(data) {
   if (ptalLayer) {
     try { ptalLayer.remove(); } catch (_) {}
@@ -322,9 +291,6 @@ function addPTALLayer(data) {
   try { map.fitBounds(ptalLayer.getBounds()); } catch (_) {}
 }
 
-/* ==============================
-   PTAL Loader
-   ============================== */
 async function loadPTAL() {
   let data = null;
 
@@ -359,9 +325,6 @@ async function loadPTAL() {
   if (data) addPTALLayer(data);
 }
 
-/* ==============================
-   Legend controls
-   ============================== */
 const legend = $("legend");
 const burger = $("legend-burger");
 const legendToggle = $("legend-toggle");
@@ -410,9 +373,6 @@ if (legendToggle && legendContent && legend) {
   });
 }
 
-/* ==============================
-   Mismatch toggle
-   ============================== */
 const mismatchToggle = $("mismatch-toggle");
 
 function applyFilter() {
@@ -424,9 +384,6 @@ if (mismatchToggle) {
   mismatchToggle.addEventListener("change", applyFilter);
 }
 
-/* ==============================
-   Address search
-   ============================== */
 const searchBtn = $("search-btn");
 const searchInput = $("address-input");
 
@@ -493,15 +450,9 @@ async function searchAddress() {
   }
 }
 
-/* ==============================
-   Footer metadata
-   ============================== */
 setText("version", APP_VERSION);
 setText("ptal-thresholds", PTAL_THRESHOLDS_TEXT);
 
-/* ==============================
-   Initial state
-   ============================== */
 if (infoPanel) {
   infoPanel.classList.add("hidden");
   infoPanel.classList.remove("show");
