@@ -1,6 +1,6 @@
 # Brisbane Public Transport Accessibility Level (PTAL) Methodology
 
-**Version 0.1 | January 2026**
+**Version 0.2 | January 2026**
 
 ---
 
