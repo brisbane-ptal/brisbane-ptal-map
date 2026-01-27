@@ -581,6 +581,66 @@ async function loadPTAL() {
   if (data) addPTALLayer(data);
 }
 
+// Handle URL parameters to open specific cells
+function openCellFromURL() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const cellId = urlParams.get('cell');
+  
+  if (!cellId || !ptalData) return;
+  
+  // Find the feature with matching ID
+  const feature = ptalData.features.find(f => f.properties.id === cellId);
+  
+  if (!feature) {
+    console.warn(`Cell ${cellId} not found`);
+    return;
+  }
+  
+  // Get the Leaflet layer for this feature
+  ptalLayer.eachLayer(layer => {
+    if (layer.feature?.properties?.id === cellId) {
+      // Zoom to cell
+      const bounds = layer.getBounds();
+      map.fitBounds(bounds, { padding: [100, 100], maxZoom: 16 });
+      
+      // Highlight the cell temporarily
+      layer.setStyle({
+        weight: 4,
+        color: '#FF6B00',
+        fillOpacity: 0.8
+      });
+      
+      // Open info panel after a brief delay
+      setTimeout(() => {
+        showInfo({ target: layer });
+      }, 500);
+      
+      // Reset highlight after 3 seconds
+      setTimeout(() => {
+        ptalLayer.resetStyle(layer);
+      }, 3000);
+    }
+  });
+}
+
+// Call after data loads
+function addPTALLayer(data) {
+  if (ptalLayer) {
+    try { ptalLayer.remove(); } catch (_) {}
+    ptalLayer = null;
+  }
+
+  ptalData = data;
+  ptalLayer = L.geoJSON(data, { style, onEachFeature }).addTo(map);
+
+  createSVGPatterns();
+
+  try { map.fitBounds(ptalLayer.getBounds()); } catch (_) {}
+  
+  // NEW: Check for URL parameter after layer loads
+  openCellFromURL();
+}
+
 const legend = $("legend");
 const burger = $("legend-burger");
 const legendToggle = $("legend-toggle");
