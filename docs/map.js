@@ -410,16 +410,22 @@ function showInfo(e) {
   const gridId = props.id || "Unknown";
   const capacity = props.total_capacity;
   
-  // Format grid ID for display AND URL
-  const gridMatch = gridId.match(/r([+-]?\d+)_c([+-]?\d+)/);
+  // Format grid ID - preserve case for north/south distinction
+  const gridMatch = gridId.match(/r([+-])(\d+)_c\+(\d+)/);
   let displayId = gridId;
   
   if (gridMatch) {
-    const row = parseInt(gridMatch[1]);
-    const col = parseInt(gridMatch[2]);
-    const letter = String.fromCharCode(65 + Math.abs(row));
-    const number = Math.abs(col);
-    displayId = `${letter}${number}`;
+    const rowSign = gridMatch[1]; // '+' or '-'
+    const rowValue = parseInt(gridMatch[2]);
+    const col = parseInt(gridMatch[3]);
+    
+    // Positive rows = uppercase (north), negative rows = lowercase (south)
+    const letterCode = 65 + rowValue; // A=65
+    const letter = rowSign === '+' 
+      ? String.fromCharCode(letterCode)      // Uppercase for positive
+      : String.fromCharCode(letterCode).toLowerCase(); // Lowercase for negative
+    
+    displayId = `${letter}${col}`;
   }
   
   // Remove previous highlight
@@ -609,14 +615,19 @@ function openCellFromURL() {
   
   console.log(`Looking for cell: ${cellId}`);
   
-  // Convert human-readable format (H8) to internal format (r+008_c+004) if needed
-  if (/^[A-Z]\d+$/i.test(cellId)) {
-    const letter = cellId.charAt(0).toUpperCase();
+  // Convert human-readable format (H8 or h8) to internal format (r+008_c+004 or r-008_c+004)
+  if (/^[A-Za-z]\d+$/.test(cellId)) {
+    const letter = cellId.charAt(0);
     const number = parseInt(cellId.slice(1));
-    const row = letter.charCodeAt(0) - 65;
+    
+    // Uppercase = positive row (north), lowercase = negative row (south)
+    const isUpperCase = letter === letter.toUpperCase();
+    const rowValue = letter.toUpperCase().charCodeAt(0) - 65;
+    const rowSign = isUpperCase ? '+' : '-';
+    
     const col = number;
-    cellId = `r+${String(row).padStart(3, '0')}_c+${String(col).padStart(3, '0')}`;
-    console.log(`Converted to internal format: ${cellId}`);
+    cellId = `r${rowSign}${String(rowValue).padStart(3, '0')}_c+${String(col).padStart(3, '0')}`;
+    console.log(`Converted ${letter}${number} to internal format: ${cellId}`);
   }
   
   // Find the feature with matching ID
