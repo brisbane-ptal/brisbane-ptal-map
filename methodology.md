@@ -98,7 +98,7 @@ Service frequency is adjusted by mode-specific on-time performance:
 | Bus | 0.85 | ~85% on-time (mixed traffic) |
 | Ferry | 0.95 | Similar to rail (dedicated corridor, weather impacts minor in peak) |
 
-*Source: TransLink quarterly performance reports, 2023-2024 averages.*
+*Source: TransLink monthly performance reports, 2023-2025 averages.*
 
 **Rationale:** Scheduled frequency overstates accessibility if services are frequently delayed. A route at 85% reliability effectively operates at 85% of its scheduled frequency.
 
