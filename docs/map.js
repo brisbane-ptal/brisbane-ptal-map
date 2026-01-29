@@ -653,7 +653,7 @@ const legendContent = $("legend-content");
 
 
 
-/ Make legend compact in embed mode
+// Make legend compact in embed mode
 if (IS_EMBED && legend && legendContent) {
   // Collapse content, keep the small header ("PTAL Score") visible
   legendContent.style.display = "none";
