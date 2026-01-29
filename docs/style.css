@@ -501,3 +501,17 @@ html.embed .legend-row {
   margin: 4px 0;
   font-size: 0.9rem;
 }
+
+/* Tooltips shouldn't capture the mouse */
+.leaflet-tooltip,
+.leaflet-tooltip.ptal-tip {
+  pointer-events: none;      /* prevents re-entrancy / ghosting */
+  transition: opacity .08s;  /* snappier fade reduces trails */
+}
+
+/* Optional: slightly smaller tooltip for dense grids */
+.leaflet-tooltip.ptal-tip {
+  font-size: 12px;
+  line-height: 1.2;
+  padding: 4px 6px;
+}
