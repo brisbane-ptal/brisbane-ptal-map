@@ -1,6 +1,6 @@
 # Brisbane Public Transport Accessibility Level (PTAL) Methodology
 
-**Version 0.2 | January 2026**
+**Version 0.8.2 | January 2026**
 
 ---
 
@@ -281,8 +281,6 @@ Total Effective Capacity = 104.3 units → PTAL 4
 
 All data sources are publicly available or derived from open government data.
 
-All data sources are publicly available.
-
 ## Limitations and assumptions
 
 **Known limitations:**
@@ -323,6 +321,11 @@ All data sources are publicly available.
     - Does not assess flood mitigation measures (levees, pump stations, elevated access) that may reduce practical impact
     - Some flood-affected sites may still be developable with appropriate engineering; overlay flags constraint, not prohibition
 
+12. **Environmental overlay limitations:**
+    - Does not consider mapped environmental conservation values
+    - Development is not proposed where contrary to conservation values, however the tool does still map their transit accesibility and  zoning for completeness
+    - Areas like Mt Cootha, Toohey Forest largely score PTAL 1 'Poor' in any case
+ 
 **Assumptions requiring validation:**
 
 - CityCat terminals treated equivalently to train stations for catchment purposes (800m) based on infrastructure permanence and market behaviour; this may overstate ferry accessibility relative to rail
